@@ -165,6 +165,24 @@ def scan_known_locations() -> list[dict]:
             None,
         ),
         (
+            "iOS Simulator Runtime (system-level)",
+            Path("/System/Volumes/Data/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime"),
+            "caution", "xcode",
+            "iOS Simulator runtime downloaded by Xcode. Survives Xcode uninstall — Apple stores it separately. "
+            "Cannot be deleted with rm (SIP protected). Must be removed via Xcode → Settings → Platforms → delete iOS. "
+            "Requires Xcode to be installed to remove.",
+            "Open Xcode → Settings → Platforms → select iOS → click minus button",
+            "When reinstalling Xcode, immediately go to Settings → Platforms and remove any simulators you don't need.",
+        ),
+        (
+            "Apple Developer Documentation (system-level)",
+            Path("/System/Volumes/Data/System/Library/AssetsV2/com_apple_MobileAsset_AppleDeveloperDocumentation"),
+            "caution", "xcode",
+            "Xcode offline documentation. Also SIP-protected — remove via Xcode → Documentation (remove downloads).",
+            "Open Xcode → Documentation → right-click → Remove",
+            None,
+        ),
+        (
             "Xcode Derived Data", HOME / "Library/Developer/Xcode/DerivedData", "safe", "xcode",
             "Xcode build artifacts — indexes, compiled code, test results. Rebuilds automatically.",
             "rm -rf ~/Library/Developer/Xcode/DerivedData/*",

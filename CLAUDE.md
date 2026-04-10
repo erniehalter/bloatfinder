@@ -101,6 +101,10 @@ This section saves time — where the real bloat lives on this specific Mac and 
 5. **Homebrew Python versions** — user pins to 3.12 only. Flag any `python@X.X` other than 3.12 in `/opt/homebrew/Cellar/`.
 6. **`.venv` folders in archived projects** — check `99 Archive/` for stale venvs.
 
+### SIP-protected bloat (cannot delete without Xcode reinstalled)
+- **iOS Simulator Runtime** — 16 GB at `/System/Volumes/Data/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime/`. Apple stores this outside Xcode so it survives uninstalls. Only removable via Xcode → Settings → Platforms. Must reinstall Xcode first.
+- **Apple Developer Docs** — 2.6 GB at same parent path. Remove via Xcode → Documentation.
+
 ### What NOT to touch
 - `~/Library/Application Support/Google` (3.4 GB) — Chrome profile, rebuilds fast
 - `~/Library/Messages` (2+ GB) — message history, irreplaceable
