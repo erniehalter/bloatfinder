@@ -445,6 +445,17 @@ def scan_dev_environments() -> list[dict]:
     return sorted(results, key=lambda x: -x["size_bytes"])
 
 
+BLOATED_EXTENSIONS = {
+    # Known extensions that store large filter lists in data/rules/
+    "gighmmpiobklfepjocnamgkkbiglidom": "AdBlock",
+    "cjpalhdlnbpafiamejdnhcphjbkeiagm": "uBlock Origin",
+    "gighmmpiobklfepjocnamgkkbiglidom": "AdBlock",
+    "cfhdojbkjhnklbpkdaibdccddilifddb": "Adblock Plus",
+}
+
+ADBLOCK_IDS = set(BLOATED_EXTENSIONS.keys())
+
+
 def scan_browser_extensions() -> list[dict]:
     print("  Scanning browser extensions...", flush=True)
     results = []
@@ -465,10 +476,34 @@ def scan_browser_extensions() -> list[dict]:
                     if not ext_entry.is_dir(follow_symlinks=False):
                         continue
                     ext_path = Path(ext_entry.path)
+                    ext_id = ext_entry.name
                     sz = dir_size(ext_path)
                     if sz < 5 * MB:
                         continue
                     name = extension_name(ext_path)
+
+                    # Special case: ad blockers with large filter rule folders
+                    if ext_id in ADBLOCK_IDS or "adblock" in name.lower() or "ublock" in name.lower():
+                        rules_path = None
+                        for ver in ext_path.iterdir():
+                            candidate = ver / "data" / "rules"
+                            if candidate.exists():
+                                rules_path = candidate
+                                break
+                        if rules_path:
+                            rules_sz = dir_size(rules_path)
+                            filter_count = sum(1 for _ in rules_path.glob("dnr/*") if not _.name.endswith(".map"))
+                            results.append(item(
+                                f"{browser_name}: {name} (filter lists)",
+                                rules_path, rules_sz, "caution", "browser",
+                                f"{name} is subscribed to {filter_count} filter lists taking {fmt(rules_sz)}. "
+                                f"Most people only need 2-3. Reduce subscriptions in {name} Settings → Filter Lists "
+                                f"to permanently shrink this. Deleting this folder just makes it redownload everything.",
+                                f"Open {name} → Settings → Filter Lists → unsubscribe from unused lists",
+                                f"Keep only: EasyList, EasyPrivacy, and one regional list if needed. Uncheck everything else.",
+                            ))
+                            continue
+
                     results.append(item(
                         f"{browser_name}: {name}",
                         ext_path, sz, "caution", "browser",
