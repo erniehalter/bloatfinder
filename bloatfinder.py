@@ -206,12 +206,7 @@ def scan_known_locations() -> list[dict]:
             None,
             None,
         ),
-        (
-            "Mail Data", HOME / "Library/Mail", "caution", "mail",
-            "Apple Mail database, cached message bodies, and attachments. Can grow silently.",
-            None,
-            "Mail → Mailbox → Erase Deleted Items. Also: Mail → Preferences → Accounts → uncheck 'Keep copies of messages for offline viewing' for large IMAP accounts.",
-        ),
+        # Mail Data intentionally omitted — user uses Gmail in Chrome, not Apple Mail
         (
             "Trash", HOME / ".Trash", "safe", "mac_bloat",
             "Files you've already deleted but haven't emptied yet.",
@@ -536,6 +531,37 @@ def scan_large_files(skip_dirs: set[str]) -> list[dict]:
     return results
 
 
+def scan_claude_old_versions() -> list[dict]:
+    """Flag old Claude Code versions — keep only the newest."""
+    versions_dir = HOME / ".local/share/claude/versions"
+    if not versions_dir.exists():
+        return []
+    try:
+        entries = sorted(
+            [e for e in versions_dir.iterdir() if e.is_file()],
+            key=lambda e: [int(x) for x in e.name.split(".") if x.isdigit()],
+            reverse=True,
+        )
+    except (OSError, ValueError):
+        return []
+    if len(entries) <= 1:
+        return []
+    results = []
+    for old in entries[1:]:  # skip the newest
+        try:
+            sz = old.stat().st_size
+        except OSError:
+            continue
+        results.append(item(
+            f"Old Claude Code version: {old.name}",
+            old, sz, "safe", "app_versions",
+            f"Old Claude Code binary. Version {entries[0].name} is current — this one is unused.",
+            f'rm "{old}"',
+            "Claude Code auto-downloads updates but doesn't clean up old versions automatically.",
+        ))
+    return results
+
+
 def scan_app_support_top() -> list[dict]:
     """Find the largest items inside ~/Library/Application Support."""
     print("  Scanning Application Support top consumers...", flush=True)
@@ -580,6 +606,7 @@ def main():
     dev_envs = scan_dev_environments()
     browsers = scan_browser_extensions()
     app_support = scan_app_support_top()
+    claude_versions = scan_claude_old_versions()
 
     # Build skip set for large-file scan (avoid recounting known dirs)
     skip_dirs = {r["path"] for r in known + dev_envs + browsers + app_support}
@@ -587,7 +614,7 @@ def main():
 
     large_files = scan_large_files(skip_dirs)
 
-    all_items = known + dev_envs + browsers + app_support + large_files
+    all_items = known + dev_envs + browsers + app_support + claude_versions + large_files
     total_bytes = sum(r["size_bytes"] for r in all_items)
     safe_bytes = sum(r["size_bytes"] for r in all_items if r["safety"] == "safe")
     caution_bytes = sum(r["size_bytes"] for r in all_items if r["safety"] == "caution")
@@ -610,6 +637,7 @@ def main():
             "dev_environments": dev_envs,
             "browser_extensions": browsers,
             "app_support_consumers": app_support,
+            "old_app_versions": claude_versions,
             "large_files": large_files,
         },
     }
