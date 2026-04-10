@@ -7,7 +7,7 @@ echo "=============================="
 echo "  BloatFinder"
 echo "=============================="
 echo ""
-echo "Scanning your disk for bloat..."
+echo "Scanning your disk — this takes about 30-60 seconds..."
 echo ""
 
 python3 bloatfinder.py
