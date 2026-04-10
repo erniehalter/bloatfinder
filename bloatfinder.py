@@ -562,6 +562,35 @@ def scan_claude_old_versions() -> list[dict]:
     return results
 
 
+def scan_python_versions() -> list[dict]:
+    """Warn if multiple Homebrew Python versions are installed."""
+    cellar = Path("/opt/homebrew/Cellar")
+    if not cellar.exists():
+        return []
+    try:
+        pythons = sorted([
+            e for e in cellar.iterdir()
+            if e.name.startswith("python@") and e.is_dir()
+        ], key=lambda e: e.name)
+    except OSError:
+        return []
+    if len(pythons) <= 1:
+        return []
+    results = []
+    for p in pythons:
+        if p.name == "python@3.12":
+            continue  # keep this one
+        sz = dir_size(p)
+        results.append(item(
+            f"Extra Python version: {p.name}",
+            p, sz, "safe", "python_versions",
+            f"You only need Python 3.12. This version is unused and can be removed.",
+            f"brew uninstall {p.name}",
+            "Run 'brew uninstall <version>' to remove. Only keep python@3.12.",
+        ))
+    return results
+
+
 def scan_app_support_top() -> list[dict]:
     """Find the largest items inside ~/Library/Application Support."""
     print("  Scanning Application Support top consumers...", flush=True)
@@ -607,6 +636,7 @@ def main():
     browsers = scan_browser_extensions()
     app_support = scan_app_support_top()
     claude_versions = scan_claude_old_versions()
+    python_versions = scan_python_versions()
 
     # Build skip set for large-file scan (avoid recounting known dirs)
     skip_dirs = {r["path"] for r in known + dev_envs + browsers + app_support}
@@ -614,7 +644,7 @@ def main():
 
     large_files = scan_large_files(skip_dirs)
 
-    all_items = known + dev_envs + browsers + app_support + claude_versions + large_files
+    all_items = known + dev_envs + browsers + app_support + claude_versions + python_versions + large_files
     total_bytes = sum(r["size_bytes"] for r in all_items)
     safe_bytes = sum(r["size_bytes"] for r in all_items if r["safety"] == "safe")
     caution_bytes = sum(r["size_bytes"] for r in all_items if r["safety"] == "caution")
@@ -638,6 +668,7 @@ def main():
             "browser_extensions": browsers,
             "app_support_consumers": app_support,
             "old_app_versions": claude_versions,
+            "extra_python_versions": python_versions,
             "large_files": large_files,
         },
     }
